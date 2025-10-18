@@ -13,6 +13,38 @@ def _get_colors(num_colors):
         _COLORS = [cmap(i) for i in range(num_colors)]
     return _COLORS
 
+def _feature_label_offset(feature, x_loading, y_loading):
+    factors = {
+        'Life.expect': (1.52, 1),
+        'Pop.growth': (1.52, 1),
+        'GDP': (1.25, 1.1),
+        'Inflation': (1.1, 1.3),
+        'Area': (1, 1.6),
+        'Military': (1, 1.2),
+        'Unemployment': (1.8, 1.2)
+    }
+    x_factor, y_factor = factors.get(feature, (1.1, 1.1))
+    return x_loading * x_factor, y_loading * y_factor
+
+def _country_label_offset(country):
+    factors = {
+        'Luxembourg': (-35, 10),
+        'Switzerland': (-25, 10),
+        'Norway': (10, 0),
+        'Lithuania': (7, -5),
+        'Hungary': (7, -3),
+        'Poland': (7, 0),
+        'Czech Republic': (-25, -15),
+        'Finland': (7, -3),
+        'Germany': (-25, -15),
+        'Denmark': (8, -6),
+        'Belgium': (-50, -1),
+        'Sweden': (10, 5)
+    }
+    x_pos, y_pos = factors.get(country, (5, 5))
+    return x_pos, y_pos
+
+
 def load_and_process_dataset(path, plot_boxplots=False):
     df = pd.read_csv(DATASET_PATH)
     df.info()
@@ -45,9 +77,10 @@ def plot_biplot(dst, pca_model, pc1_scores, pc2_scores):
     sns.scatterplot(x=pc1_scores, y=pc2_scores, s=100, alpha=0.7, ax=ax)
 
     for i, country in enumerate(dst['Country']):
+        country_label_x, country_label_y = _country_label_offset(country)
         ax.annotate(country, (pc1_scores[i], pc2_scores[i]),
-                    xytext=(5, 5), textcoords='offset points',
-                    fontsize=9, alpha=0.8)
+                    xytext=(country_label_x, country_label_y), textcoords='offset points',
+                    fontsize=11, alpha=0.8)
     colors = _get_colors(len(dst['Features']))
     loadings = pca_model.components_.T * np.sqrt(pca_model.explained_variance_)
 
@@ -55,15 +88,15 @@ def plot_biplot(dst, pca_model, pc1_scores, pc2_scores):
         arrow_color = colors[i]
         ax.arrow(0, 0, loadings[i, 0], loadings[i, 1],
                  head_width=0.05, head_length=0.05,
-                 fc=arrow_color, ec=arrow_color, alpha=0.6, linewidth=1.5)
-        ax.text(loadings[i, 0] * 1.15, loadings[i, 1] * 1.15,
-                feature, color=arrow_color, fontsize=10,
+                 fc=arrow_color, ec=arrow_color, alpha=0.6, linewidth=2.5)
+        feature_label_x, feature_label_y = _feature_label_offset(feature, loadings[i, 0], loadings[i, 1])
+        ax.text(feature_label_x, feature_label_y,
+                feature, color=arrow_color, fontsize=12,
                 ha='center', va='center', weight='bold')
     ax.axhline(y=0, color='k', linestyle='--', linewidth=0.5, alpha=0.5)
     ax.axvline(x=0, color='k', linestyle='--', linewidth=0.5, alpha=0.5)
     ax.set_xlabel(f'PC1 ({pca_model.explained_variance_ratio_[0]:.2%} variance)', fontsize=12)
     ax.set_ylabel(f'PC2 ({pca_model.explained_variance_ratio_[1]:.2%} variance)', fontsize=12)
-    ax.set_title('PCA Biplot: Countries and Feature Loadings', fontsize=14, weight='bold')
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.show()
