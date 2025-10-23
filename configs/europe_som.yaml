@@ -1,0 +1,58 @@
+# Europe SOM Experiment
+experiment:
+  name: europe_som
+  output_dir: outputs/${experiment.name}
+  seed: 42
+
+dataset:
+  path: datasets/europe.csv
+  country_column: Country
+  features:
+    - Area
+    - GDP
+    - Inflation
+    - Life.expect
+    - Military
+    - Pop.growth
+    - Unemployment
+
+preprocessing:
+  standardization: zscore
+
+som:
+  # Map size (null = auto-calculate with heuristic)
+  map_rows: null
+  map_cols: null
+
+  # SOM hyperparameters
+  learning_rate: 0.5
+  sigma: null  # null = auto-calculate based on map size
+  init_weights_type: sample  # sample, random
+  bmu_metric: euclidean
+
+  # Decay strategies
+  lr_decay_type: inverse
+  sigma_decay_type: exponential
+
+  neighborhood_type: hard
+
+training:
+  epochs: 100
+  shuffle: true
+
+analysis:
+  # Number of top assignments to display
+  display_top_assignments: 15
+  umatrix_neighbor_type: 8  # 4 or 8
+
+visualization:
+  figure_size:
+    width: 18
+    height: 5
+  # Colormaps
+  hits_cmap: viridis
+  umatrix_cmap: gray
+  labels_cmap: Blues
+  label_fontsize: 7
+  show_plot: true
+  save_path: ${experiment.output_dir}  # null = don't save
