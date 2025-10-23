@@ -43,16 +43,14 @@ training:
 analysis:
   # Number of top assignments to display
   display_top_assignments: 15
-  umatrix_neighbor_type: 8  # 4 or 8
+  umatrix_neighbor_type: 4  # 4 or 8
 
 visualization:
   figure_size:
     width: 18
     height: 5
   # Colormaps
-  hits_cmap: viridis
-  umatrix_cmap: gray
+  hits_cmap: Purples
+  umatrix_cmap: magma
   labels_cmap: Blues
-  label_fontsize: 7
-  show_plot: true
   save_path: ${experiment.output_dir}  # null = don't save
