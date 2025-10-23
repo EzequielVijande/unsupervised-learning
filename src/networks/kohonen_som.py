@@ -151,27 +151,28 @@ class SOM:
             hit_map[row, col] += 1
         return hit_map
 
-    def u_matrix(self, neighbor_type: Literal[4, 8] = 4) -> NDArray[np.floating]:
-        """
-        U-Matrix: distancia promedio a neuronas vecinas. Permite 4 u 8 vecinos.
-        """
-        assert self.weights is not None, "Weights must be initialized before computing u-matrix"
-        umatrix = np.zeros((self.rows, self.cols), dtype=float)
+    def u_matrix(self, neighbor_type: Literal[11, 12] = 4) -> NDArray[np.floating]:
         if neighbor_type == 4:
-            directions = [(-1,0),(1,0),(0,-1),(0,1)]
+            directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
         else: # neighbor_type == 8
-            directions = [(-1,0),(1,0),(0,-1),(0,1), (-1,-1), (-1,1), (1,-1), (1,1)]
+            directions = [(-1, 0), (1, 0), (0, -1), (0, 1),
+                          (-1, -1), (-1, 1), (1, -1), (1, 1)]
 
+        umatrix = np.zeros((self.rows, self.cols), dtype=float)
         for row in range(self.rows):
             for col in range(self.cols):
+                center_weight = self.weights[row, col]
                 neighbor_dists = []
-                for delta_row, delta_col in directions:
-                    neighbor_row, neighbor_col = row + delta_row, col + delta_col
-                    if 0 <= neighbor_row < self.rows and 0 <= neighbor_col < self.cols:
-                        # Distancia Euclídea entre el peso de la neurona central y el vecino
-                        neighbor_dists.append(float(np.linalg.norm(self.weights[row, col] - self.weights[neighbor_row, neighbor_col])))
+                for dr, dc in directions:
+                    n_row, n_col = row + dr, col + dc
+                    if 0 <= n_row < self.rows and 0 <= n_col < self.cols:
+                        neighbor_weight = self.weights[n_row, n_col]
+                        # euclídean distance
+                        distance = np.linalg.norm(center_weight - neighbor_weight)
+                        neighbor_dists.append(distance)
 
-                umatrix[row, col] = np.mean(neighbor_dists) if neighbor_dists else 0.0 # Promedio de la distancia
+                umatrix[row, col] = np.mean(neighbor_dists) if neighbor_dists else 0.0
+
         return umatrix
 
     def quantization_error(self, data: NDArray[np.floating]) -> float:
