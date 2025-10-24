@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import sys
+import matplotlib.patheffects as path_effects
 
 from typing import Literal, Optional, Tuple
 from pathlib import Path
@@ -10,16 +11,28 @@ from src.networks.kohonen_som import SOM
 from src.utils.feature_scaling import zscore
 from src.utils.config import load_config
 from matplotlib.patches import Circle
+from collections import defaultdict
 
 
 def som_size_heuristic(n_samples: int) -> Tuple[int, int]:
     """ Heuristic for (KxK) map size based on N samples."""
-    target = int(5 * math.sqrt(n_samples))
+    target = int(5 * math.sqrt(n_samples) - 1)
     rows = int(math.sqrt(target))
     cols = int(math.ceil(target / max(1, rows)))
-    return max(5, rows), max(5, cols)
+    return max(4, rows), max(4, cols)
 
 def country_abbrev(name: str, k: int = 3) -> str:
+    special_cases = {
+        "Slovenia": "SVN",
+        "Slovakia": "SVK",
+        "Switzerland": "CHE",
+        "Sweden": "SWE",
+        "Austria": "AUT",
+    }
+
+    if name in special_cases:
+        return special_cases[name]
+
     t = "".join(c for c in name if c.isalpha())
     return t[:k].upper()
 
@@ -66,14 +79,60 @@ def plot_hits(ax, hits: np.ndarray, cfg: Optional[dict] = None):
     ax.set_xlabel("j"); ax.set_ylabel("i")
     return im
 
-def plot_labels_on_umatrix(ax, umatrix: np.ndarray, coords: np.ndarray, labels):
-    ax.imshow(umatrix, origin="lower", cmap="gray")
-    ax.set_title("Labels over U-Matrix")
+def plot_labels_on_umatrix(ax, umatrix: np.ndarray, coords: np.ndarray, labels, bmu_dists: np.ndarray, cfg: Optional[dict] = None):
+    ax.imshow(umatrix, origin="lower", cmap=cfg.get("umatrix_cmap", "plasma"))
+    ax.set_title("U-Matrix with country labels")
     ax.set_xlabel("j"); ax.set_ylabel("i")
-    for lab, (ri, cj) in zip(labels, coords):
-        ax.text(cj, ri, country_abbrev(lab), ha="center", va="center", fontsize=7, color="deepskyblue")
+    abbrev_to_full = {}
+    abbrev_to_dist = {}
+    # Group labels by their neuron coordinates
+    neuron_labels = defaultdict(list)
+    for label, (ri, cj), dist in zip(labels, coords, bmu_dists):
+        abbrev = country_abbrev(label)
+        neuron_labels[(ri, cj)].append(abbrev)
+        abbrev_to_full[abbrev] = label
+        abbrev_to_dist[abbrev] = dist
 
-def plot_component_planes(weights: np.ndarray, feat_names, suptitle: str = "Component planes", save_path: Optional[Path] = None):
+    # Plot stacked labels for each neuron
+    for (ri, cj), lab_list in neuron_labels.items():
+        if len(lab_list) == 1:
+            text = ax.text(cj, ri, lab_list[0], ha="center", va="center",
+                   fontsize=10, color=cfg.get("labels_cmap", "deepskyblue"), fontweight='bold')
+            text.set_path_effects([path_effects.Stroke(linewidth=2, foreground='white'),
+                                   path_effects.Normal()])
+        else:
+            # multiple labels: stack them vertically
+            n_labels = len(lab_list)
+            vspace = 0.15
+            total_height = (n_labels - 1) * vspace
+            start_offset = -total_height / 2
+            for idx, label in enumerate(lab_list):
+                y_offset = start_offset + idx * vspace
+                text = ax.text(cj, ri + y_offset, label, ha="center", va="center",
+                       fontsize=10, color=cfg.get("labels_cmap", "deepskyblue"), fontweight='bold')
+                text.set_path_effects([path_effects.Stroke(linewidth=2, foreground='white'),
+                                       path_effects.Normal()])
+
+    # legend with abbreviations and full names
+    sorted_abbrevs = sorted(abbrev_to_full.items(), key=lambda x: abbrev_to_dist[x[0]], reverse=True)
+
+    # Format with consistent spacing
+    max_name_len = max(len(full_name) for _, full_name in sorted_abbrevs)
+    legend_lines = []
+    for abbrev, full_name in sorted_abbrevs:
+        dist_val = abbrev_to_dist[abbrev]
+        line = f"{abbrev}:  {full_name:<{max_name_len}}  {dist_val:6.4f}"
+        legend_lines.append(line)
+
+    legend_text = "\n".join(legend_lines)
+    ax.text(1.25, 0.5, legend_text,
+            transform=ax.transAxes,
+            fontsize=8,
+            verticalalignment='center',
+            family='monospace',
+            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+
+def plot_component_planes(weights: np.ndarray, feat_names, suptitle: str = "Component planes", save_path: Optional[Path] = None, cfg: Optional[dict] = None):
     m, n, d = weights.shape
     cols = 4
     rows = int(np.ceil(d / cols))
@@ -84,7 +143,7 @@ def plot_component_planes(weights: np.ndarray, feat_names, suptitle: str = "Comp
         r, c = divmod(k, cols)
         plane = weights[:, :, k]
         vmin, vmax = plane.min(), plane.max()
-        im = axes[r, c].imshow(plane, origin="upper", cmap="magma", vmin=vmin, vmax=vmax)
+        im = axes[r, c].imshow(plane, origin="lower", cmap=cfg.get("umatrix_cmap", "magma"), vmin=vmin, vmax=vmax)
         axes[r, c].set_title(feat_names[k])
         axes[r, c].set_xticks(range(n)); axes[r, c].set_yticks(range(m))
         cb = plt.colorbar(im, ax=axes[r, c], fraction=0.046, pad=0.04)
@@ -163,7 +222,7 @@ if __name__ == "__main__":
         "BMU_i": bmu_coords[:,0],
         "BMU_j": bmu_coords[:,1],
         "BMU_dist": np.round(bmu_dists, 4)
-    }).sort_values(["BMU_i","BMU_j","Country"]).reset_index(drop=True)
+    }).sort_values("BMU_dist").reset_index(drop=True)
     display_top = cfg["analysis"]["display_top_assignments"]
     print(f"\nCountry top assignments (first {display_top}):")
     print(assignments.head(display_top).to_string(index=False))
@@ -182,12 +241,12 @@ if __name__ == "__main__":
     fig, axes = plt.subplots(1, 3, figsize=(fig_width, fig_height))
 
     im0 = plot_umatrix_with_hit_circles(axes[0], umatrix, hit_map, neighbor_type, viz_cfg)
-    plt.colorbar(im0, ax=axes[0], fraction=0.046, pad=0.04)
+    plt.colorbar(im0, ax=axes[2], fraction=0.05, pad=0.02)
 
     im1 = plot_hits(axes[1], hit_map, viz_cfg)
     plt.colorbar(im1, ax=axes[1], fraction=0.046, pad=0.04)
 
-    plot_labels_on_umatrix(axes[2], umatrix, bmu_coords, df["Country"])
+    plot_labels_on_umatrix(axes[2], umatrix, bmu_coords, df["Country"], bmu_dists, viz_cfg)
     axes[2].set_xticks(range(map_cols)); axes[2].set_yticks(range(map_rows))
 
     fig.tight_layout()
@@ -201,5 +260,5 @@ if __name__ == "__main__":
         print(f"\nPlot saved to: {umatrix_plot}")
         component_save_path = save_path.parent / "kohonen_component_planes"
 
-    _ = plot_component_planes(som.weights, features, suptitle="Component planes per variable", save_path=component_save_path)
+    _ = plot_component_planes(som.weights, features, suptitle="Component planes per variable", save_path=component_save_path, cfg=viz_cfg)
     plt.show()

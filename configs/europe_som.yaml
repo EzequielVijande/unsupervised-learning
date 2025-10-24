@@ -27,7 +27,7 @@ som:
   # SOM hyperparameters
   learning_rate: 0.5
   sigma: null  # null = auto-calculate based on map size
-  init_weights_type: sample  # sample, random
+  init_weights_type: sample # sample, random
   bmu_metric: euclidean
 
   # Decay strategies
@@ -37,13 +37,13 @@ som:
   neighborhood_type: hard
 
 training:
-  epochs: 100
+  epochs: 1000
   shuffle: true
 
 analysis:
   # Number of top assignments to display
-  display_top_assignments: 15
-  umatrix_neighbor_type: 4  # 4 or 8
+  display_top_assignments: 28
+  umatrix_neighbor_type: 8  # 4 or 8
 
 visualization:
   figure_size:
@@ -51,6 +51,6 @@ visualization:
     height: 5
   # Colormaps
   hits_cmap: Purples
-  umatrix_cmap: magma
-  labels_cmap: Blues
+  umatrix_cmap: plasma
+  labels_cmap: black
   save_path: ${experiment.output_dir}  # null = don't save

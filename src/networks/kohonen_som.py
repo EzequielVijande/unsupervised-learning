@@ -35,7 +35,7 @@ class SOM:
         else:
             # 'sample' initialization from data to avoid 'dead neurons'
             n_samples = data.shape[0]
-            sample_indices = rng.choice(n_samples, size=self.rows * self.cols, replace=True)
+            sample_indices = rng.choice(n_samples, size=self.rows * self.cols, replace=False)
             flat_weights = data[sample_indices].copy()
             self.weights = flat_weights.reshape(self.rows, self.cols, self.dim)
 
