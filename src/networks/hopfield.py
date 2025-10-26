@@ -12,10 +12,15 @@ class HopfieldNetwork:
         Values in patterns must be -1 or 1.
         """
         patterns = np.asarray(patterns)
-        n_patterns = len(patterns)
+        
+        # Check if normalization factor N (n_neurons) is correct
+        # The provided PDFs (Hopfield.pdf, 3 - Hopfield.pdf) state:
+        # w_ij = (1/N) * sum(xi_i * xi_j) 
+        # N = self.n_neurons
         
         # Initialize weights
-        self.weights = np.dot(patterns.T, patterns) / n_patterns
+        self.weights = np.dot(patterns.T, patterns) / self.n_neurons
+        
         # Remove self-connections
         np.fill_diagonal(self.weights, 0)
     
