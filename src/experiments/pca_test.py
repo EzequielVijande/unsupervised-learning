@@ -138,7 +138,9 @@ def main():
     # Train Oja Network
     print(f'\nTraining Oja Network...')
     oja = OjaNetwork(n_features=dst['Data'].shape[1], seed=42)
-    oja.train(dst['Data'], epochs=1000, learning_rate=0.01)
+    if np.dot(oja.get_weights(), pca.components_[0]) < 0:
+        oja.weights *= -1
+    oja.train(dst['Data'], pca.components_[0], epochs=1000, learning_rate=0.01, verbose = True, norm_each_epoch = True)
     oja_weights = oja.get_weights()
     
     print(f'\nOja Network Results:')
@@ -152,7 +154,15 @@ def main():
     print(f'Oja weights:     {oja_weights}')
     print(f'Absolute difference: {np.abs(pca1_contrib - oja_weights)}')
     print(f'Mean absolute difference: {np.mean(np.abs(pca1_contrib - oja_weights)):.6f}')
-    
+
+    #plot convergence visualization
+    import matplotlib.pyplot as plt
+    plt.plot(oja.angle_history)
+    plt.xlabel("Epoch")
+    plt.ylabel("Angle with PCA (°)")
+    plt.title("Oja convergence toward first principal component")
+    plt.show()
+
     # Check if they are similar (considering sign ambiguity)
     similarity = np.abs(np.dot(pca1_contrib, oja_weights))
     print(f'Cosine similarity (absolute): {similarity:.6f}')
