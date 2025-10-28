@@ -1,8 +1,11 @@
-from sklearn.decomposition import PCA
-import pandas as pd
 import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
 import seaborn as sns
+from sklearn.decomposition import PCA
+
+from src.networks.oja import OjaNetwork
+from src.utils.feature_scaling import zscore
 
 _COLORS = None
 
@@ -48,28 +51,40 @@ def _country_label_offset(country):
 def load_and_process_dataset(path, plot_boxplots=False):
     df = pd.read_csv(DATASET_PATH)
     df.info()
-    country_factors = df.drop('Country', axis=1).to_numpy(dtype=np.float64)
-    scaled_factors = (country_factors - country_factors.mean(axis=0))/country_factors.std(axis=0)
-    x_ticks = df.drop('Country', axis=1).keys().to_list()
+    
+    feature_cols = df.drop('Country', axis=1).columns.tolist()
+    
+    # 1. Get unscaled data first for the "before" plot
+    country_factors = df[feature_cols].to_numpy(dtype=np.float64)
+    
+    # 2. Get scaled data using zscore
+    scaled_factors, _, _ = zscore(df, feature_cols)
+    
+    x_ticks = feature_cols
     colors = _get_colors(len(x_ticks))
+    
     if plot_boxplots:
         plt.figure(figsize=(16,12))
         plt.title('Country variables before standarization', fontsize=20)
+        # Use unscaled 'country_factors' here
         bp = plt.boxplot(country_factors, tick_labels=x_ticks, patch_artist=True)
         for patch, color in zip(bp['boxes'], colors):
             patch.set_facecolor(color)
         plt.xticks(rotation=0, fontsize=15)
         plt.grid(True)
         plt.show()
+        
         #Standarized factors
         plt.figure(figsize=(16,12))
         plt.title('Country variables after standarization', fontsize=20)
+        # Use scaled 'scaled_factors' here
         bp = plt.boxplot(scaled_factors, tick_labels=x_ticks, patch_artist=True)
         for patch, color in zip(bp['boxes'], colors):
             patch.set_facecolor(color)
         plt.xticks(rotation=0, fontsize=15)
         plt.grid(True)
         plt.show()
+        
     return {'Country':df['Country'].to_list(), 'Features':x_ticks, 'Data':scaled_factors}
 
 def plot_biplot(dst, pca_model, pc1_scores, pc2_scores):
@@ -116,10 +131,31 @@ def main():
     # Get the components (loadings)
     pca1_contrib = pca.components_[0].flatten()
 
+    print(f'\nPCA Results (sklearn):')
     print(f'Components shape = {pca1_contrib.shape}')
     print(f'Components = {pca1_contrib}')
-    cov_mat = pca.get_covariance()
-    # Weight of each feature in the component
+    
+    # Train Oja Network
+    print(f'\nTraining Oja Network...')
+    oja = OjaNetwork(n_features=dst['Data'].shape[1], seed=42)
+    oja.train(dst['Data'], epochs=1000, learning_rate=0.01)
+    oja_weights = oja.get_weights()
+    
+    print(f'\nOja Network Results:')
+    print(f'Weights shape = {oja_weights.shape}')
+    print(f'Weights = {oja_weights}')
+    
+    # Compare results
+    print(f'\n=== COMPARISON: sklearn PCA vs Oja Network ===')
+    print(f'Feature names: {dst["Features"]}')
+    print(f'PCA components:  {pca1_contrib}')
+    print(f'Oja weights:     {oja_weights}')
+    print(f'Absolute difference: {np.abs(pca1_contrib - oja_weights)}')
+    print(f'Mean absolute difference: {np.mean(np.abs(pca1_contrib - oja_weights)):.6f}')
+    
+    # Check if they are similar (considering sign ambiguity)
+    similarity = np.abs(np.dot(pca1_contrib, oja_weights))
+    print(f'Cosine similarity (absolute): {similarity:.6f}')
 
     #Plot featrues contributions
     plt.figure(figsize=(18,12))
