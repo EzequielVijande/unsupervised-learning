@@ -4,6 +4,7 @@ import numpy as np
 from src.networks.hopfield import HopfieldNetwork
 import pandas as pd
 import seaborn as sns
+import string
 
 DATASET_PATH = "./datasets/letters.json"
 
@@ -224,18 +225,26 @@ def find_spurious_state(network, stored_patterns, n_neurons, max_tries=1000):
     print(f"No se encontró ningún estado espúreo después de {max_tries} intentos.")
     return None
 
-
 def main():
     # Lista de 4 letras a almacenar según consigna
-    letters_to_store = ['A', 'C', 'J', 'P']
-    # letters2group = ['A', 'B', 'C', 'D']
-    # letters2group = ['O', 'Q', 'G', 'C']
-    # letters2group = ['X', 'T', 'L', 'V']
-    noise_level = 0.25  # 25% de ruido
+    # letters_to_store = ['A', 'C', 'J', 'P'] # Conjunto aleatorio sin criterio de ortogonalidad
+    # letters_to_store = ['Z', 'C', 'V', 'P'] # Muestra como un conjunto mas ortogonal es mas estable.
+
+
+    letters_to_store = ['O', 'Q', 'G', 'C'] # De los menos ortogonales
+    # letters_to_store = ['A', 'S', 'D', 'Y'] # De los mas ortogonales
+
+    noise_level = 0.0  # 25% de ruido
     
     # Cargar las letras del JSON
     with open(DATASET_PATH, 'r') as f:
         dst = json.load(f)
+
+    # plot_all_letters(dst['letters'])
+
+    # for l in letters_to_store:
+    #     plot_letter_pattern(dst['letters'][l], l)
+    #     plt.show()
     
     # Generar patrones de entrenamiento
     patterns = genertate_letter_group(dst['letters'], letters_to_store)
@@ -243,6 +252,18 @@ def main():
     print(f'Number of patterns= {n_patterns}')
     print(f'N neurons= {n_neurons}')
     print(f'Letters stored: {letters_to_store}')
+
+    #Calculate and plot similarity/orthogonality between letters
+    sim_mat = similarity_arr(patterns)
+    n = len(sim_mat)
+    
+    # Exclude diagonal (self-similarities)
+    mask = ~np.eye(n, dtype=bool)
+    off_diagonal_similarities = sim_mat[mask]
+    print(off_diagonal_similarities)
+    avg_simmilarity =np.abs(off_diagonal_similarities).mean()
+    print(f"Avg simmilarity = {avg_simmilarity}")
+    plot_similarity_heatmap(sim_mat, letters_to_store)
     
     # Instanciar y entrenar la red de Hopfield
     network = HopfieldNetwork(patterns.shape[1])
@@ -284,17 +305,24 @@ def main():
     print("--- Punto 2.1.b: Búsqueda de Estado Espúreo ---")
     print("="*50)
     
-    # Llamar a la función para encontrar estados espúreos
-    spurious_state = find_spurious_state(network, patterns, n_neurons, max_tries=1000)
+    # Encontrar un estado espureo
+    noise_lvl = 0.4
+    og_pattern = patterns[1]
+    noisy_pattern = add_noise(og_pattern, noise_lvl)
+    recall_steps = network.recall(noisy_pattern, max_iter=50, async_update=False)
+    print(f"Converged in {len(recall_steps)-1} steps")
+    plot_recall_steps(recall_steps, og_pattern, noisy_pattern, "Estado espureo")
+
+    # spurious_state = find_spurious_state(network, patterns, n_neurons, max_tries=1000)
     
-    if spurious_state is not None:
-        print("\n¡Análisis del estado espúreo completado!")
-        print("Un estado espúreo es un mínimo local de la función de energía")
-        print("que no corresponde a ninguno de los patrones almacenados.")
-    else:
-        print("\nNo se pudo encontrar un estado espúreo en los intentos realizados.")
-        print("Esto puede indicar que la red tiene buena capacidad de almacenamiento")
-        print("para los 4 patrones dados, o que se necesitan más intentos.")
+    # if spurious_state is not None:
+    #     print("\n¡Análisis del estado espúreo completado!")
+    #     print("Un estado espúreo es un mínimo local de la función de energía")
+    #     print("que no corresponde a ninguno de los patrones almacenados.")
+    # else:
+    #     print("\nNo se pudo encontrar un estado espúreo en los intentos realizados.")
+    #     print("Esto puede indicar que la red tiene buena capacidad de almacenamiento")
+    #     print("para los 4 patrones dados, o que se necesitan más intentos.")
 
 if __name__ == '__main__':
     # Fijar semilla para reproducibilidad
