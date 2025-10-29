@@ -24,8 +24,8 @@ class OjaNetwork:
             for x in X:
                 y = np.dot(w, x)
                 w += learning_rate *y *(x-y*w)
-            if norm_each_epoch:
-                self.weights /= np.linalg.norm(self.weights) + 1e-12
+            # if norm_each_epoch:
+            #    w /= np.linalg.norm(w) + 1e-12
 
             # Track convergence
             delta = np.linalg.norm(w -w_prev)
