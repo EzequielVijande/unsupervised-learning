@@ -237,7 +237,7 @@ def main():
         "Oja": scores_oja
     })
 
-    # --- Plot 1: Scatter (PCA vs Oja scores) ---
+    # Scatter (PCA vs Oja scores)
     plt.figure(figsize=(8, 6))
     plt.scatter(scores_pca, scores_oja, alpha=0.75)
     mn, mx = scores_pca.min(), scores_pca.max()
@@ -250,7 +250,7 @@ def main():
     plt.tight_layout()
     plt.show()
 
-    # --- Plot 2: Bars by country (sorted) ---
+    # Bars by country (sorted)
     scores_df_sorted = scores_df.sort_values("PCA", ascending=True)
     plt.figure(figsize=(12, 6))
     plt.bar(scores_df_sorted["Country"], scores_df_sorted["PCA"], alpha=0.6, label="PCA")
@@ -262,7 +262,7 @@ def main():
     plt.tight_layout()
     plt.show()
 
-    # --- Numeric agreement ---
+    # correlation
     corr = np.corrcoef(scores_pca, scores_oja)[0, 1]
     print(f"\nCorrelation between PCA and Oja country projections (PC1): {corr:.4f}")
 
