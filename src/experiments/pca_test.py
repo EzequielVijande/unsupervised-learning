@@ -221,7 +221,50 @@ def main():
     plt.ylabel('PCA 1')
     plt.grid(True)
     plt.show()
-    
+
+    #oja vs pca country scores:
+    w_pca = pca.components_[0]
+    scores_pca = np.dot(dst['Data'], w_pca)
+    scores_oja = np.dot(dst['Data'], oja_weights)
+
+    if np.dot(scores_pca, scores_oja) < 0:
+        scores_oja *= -1
+
+    #dataframe
+    scores_df = pd.DataFrame({
+        "Country": dst["Country"],
+        "PCA": scores_pca,
+        "Oja": scores_oja
+    })
+
+    # --- Plot 1: Scatter (PCA vs Oja scores) ---
+    plt.figure(figsize=(8, 6))
+    plt.scatter(scores_pca, scores_oja, alpha=0.75)
+    mn, mx = scores_pca.min(), scores_pca.max()
+    plt.plot([mn, mx], [mn, mx], "r--", label="y = x")
+    plt.xlabel("PCA country scores (PC1)")
+    plt.ylabel("Oja country scores (PC1)")
+    plt.title("Country projections: PCA vs Oja (PC1)")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+    # --- Plot 2: Bars by country (sorted) ---
+    scores_df_sorted = scores_df.sort_values("PCA", ascending=True)
+    plt.figure(figsize=(12, 6))
+    plt.bar(scores_df_sorted["Country"], scores_df_sorted["PCA"], alpha=0.6, label="PCA")
+    plt.bar(scores_df_sorted["Country"], scores_df_sorted["Oja"], alpha=0.6, label="Oja")
+    plt.xticks(rotation=90)
+    plt.ylabel("Component score (PC1)")
+    plt.title("Country scores on PC1: PCA vs Oja")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+    # --- Numeric agreement ---
+    corr = np.corrcoef(scores_pca, scores_oja)[0, 1]
+    print(f"\nCorrelation between PCA and Oja country projections (PC1): {corr:.4f}")
 
 if __name__ == "__main__":
     main()  # This calls main() only when file is run directly
