@@ -3,7 +3,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import seaborn as sns
 from sklearn.decomposition import PCA
-
+from matplotlib.lines import Line2D
 from src.networks.oja import OjaNetwork
 from src.utils.feature_scaling import zscore
 
@@ -116,6 +116,42 @@ def plot_biplot(dst, pca_model, pc1_scores, pc2_scores):
     plt.tight_layout()
     plt.show()
 
+def plot_pca_vs_oja_comparison(features, pca_components, oja_weights):
+    fig, ax = plt.subplots(figsize=(12, 8))
+    colors = _get_colors(len(features))
+    x_positions = np.arange(len(features))
+    # sklearn PCA components as dots
+    for i, (feature, pca_val) in enumerate(zip(features, pca_components)):
+        ax.scatter(i, pca_val, marker='s', s=200, color=colors[i],
+                   label=f'{feature} (PCA)', edgecolors='black', linewidths=1.5, alpha=0.8, zorder=3)
+    # oja weights as crosses
+    for i, (feature, oja_val) in enumerate(zip(features, oja_weights)):
+        ax.scatter(i, oja_val, marker='.', s=200, color=colors[i],
+                   linewidths=3, alpha=0.9, zorder=4, edgecolors='black')
+    # Add connecting lines between PCA and Oja for each feature
+    for i in range(len(features)):
+        ax.plot([i, i], [pca_components[i], oja_weights[i]],
+                color=colors[i], linestyle='--', alpha=0.4, linewidth=1)
+
+    ax.axhline(y=0, color='k', linestyle='-', linewidth=0.8, alpha=0.3)
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(features, ha='center', fontsize=14)
+    ax.set_ylabel('Weight / Component Value', fontsize=14, fontweight='bold')
+    ax.set_xlabel('Features', fontsize=18, fontweight='bold')
+    ax.grid(True, alpha=0.3, axis='y')
+
+
+    legend_elements = [
+        Line2D([0], [0], marker='o', color='w', markerfacecolor='gray',
+               markersize=10, label='sklearn PCA', markeredgecolor='black', markeredgewidth=1.5),
+        Line2D([0], [0], marker='x', color='gray', markersize=10,
+               label='Oja Network', linewidth=3, linestyle='None')
+    ]
+    ax.legend(handles=legend_elements, loc='best', fontsize=11, framealpha=0.9)
+
+    plt.tight_layout()
+    plt.show()
+
 DATASET_PATH = './datasets/europe.csv'
 
 def main():
@@ -166,6 +202,8 @@ def main():
     # Check if they are similar (considering sign ambiguity)
     similarity = np.abs(np.dot(pca1_contrib, oja_weights))
     print(f'Cosine similarity (absolute): {similarity:.6f}')
+
+    plot_pca_vs_oja_comparison(dst['Features'], pca1_contrib, oja_weights)
 
     #Plot featrues contributions
     plt.figure(figsize=(18,12))
