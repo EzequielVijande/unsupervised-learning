@@ -40,9 +40,13 @@ class HopfieldNetwork:
                 results.append(current_pattern)
                 # Random neuron order for asynchronous update
                 neurons_order = np.random.permutation(self.n_neurons)
+                new_pattern = current_pattern.copy()
                 for neuron in neurons_order:
-                    activation = np.dot(self.weights[neuron], current_pattern)
-                    current_pattern[neuron] = 1 if activation >= 0 else -1
+                    activation = np.dot(self.weights[neuron], new_pattern)
+                    new_pattern[neuron] = 1 if activation >= 0 else -1
+                if np.array_equal(new_pattern, current_pattern):
+                    break
+                current_pattern = new_pattern
         else:
             # Synchronous update (less stable)
             for _ in range(max_iter):

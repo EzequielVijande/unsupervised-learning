@@ -2,6 +2,8 @@ import json
 from matplotlib import pyplot as plt
 import numpy as np
 from src.networks.hopfield import HopfieldNetwork
+import pandas as pd
+import seaborn as sns
 
 DATASET_PATH = "./datasets/letters.json"
 
@@ -73,6 +75,40 @@ def genertate_letter_group(letter_dict, letters):
     for i, letter in enumerate(letters):
         letter_gr[i] = np.array(letter_dict[letter], dtype=np.float32).flatten()
     return letter_gr
+
+def similarity_arr(patterns):
+    matrix = np.stack(patterns) 
+    result = matrix @ matrix.T
+    return result/patterns[0].size
+
+def plot_similarity_heatmap(similarity_matrix, labels, title="Pattern Similarities", figsize=(10, 8)):
+    """
+    Plot similarity matrix as a heatmap with labels.
+    
+    Parameters:
+    - similarity_matrix: 2D numpy array of similarities
+    - labels: List of labels for rows/columns
+    - title: Plot title
+    - figsize: Figure size
+    """
+    # Convert to DataFrame for nice labeling
+    df = pd.DataFrame(similarity_matrix, index=labels, columns=labels)
+    
+    # Create heatmap
+    plt.figure(figsize=figsize)
+    ax = sns.heatmap(df, 
+                    annot=True,           # Show values in cells
+                    fmt=".2f",           # Format to 2 decimal places
+                    cmap="seismic",       # Red-Yellow-Blue colormap
+                    center=0,            # Center colormap at 0
+                    vmin=-1, vmax=1,     # Color scale limits
+                    square=True,         # Square cells
+                    cbar_kws={'label': 'Similarity'})
+    
+    plt.title(title, fontsize=16, pad=20)
+    plt.tight_layout()
+    plt.show()
+    return ax
 
 def add_noise(pattern, noise_level):
     """
@@ -192,6 +228,9 @@ def find_spurious_state(network, stored_patterns, n_neurons, max_tries=1000):
 def main():
     # Lista de 4 letras a almacenar según consigna
     letters_to_store = ['A', 'C', 'J', 'P']
+    # letters2group = ['A', 'B', 'C', 'D']
+    # letters2group = ['O', 'Q', 'G', 'C']
+    # letters2group = ['X', 'T', 'L', 'V']
     noise_level = 0.25  # 25% de ruido
     
     # Cargar las letras del JSON
