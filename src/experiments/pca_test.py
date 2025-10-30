@@ -178,6 +178,7 @@ def main():
         oja.weights *= -1
     oja.train(dst['Data'], pca.components_[0], epochs=1000, learning_rate=0.01, verbose = True, norm_each_epoch = True)
     oja_weights = oja.get_weights()
+    oja_var_ratio = oja.explained_variance_ratio(dst["Data"])
     
     print(f'\nOja Network Results:')
     print(f'Weights shape = {oja_weights.shape}')
@@ -191,12 +192,15 @@ def main():
     print(f'Absolute difference: {np.abs(pca1_contrib - oja_weights)}')
     print(f'Mean absolute difference: {np.mean(np.abs(pca1_contrib - oja_weights)):.6f}')
 
+    plt.rcParams.update({'font.size': 14})
     #plot convergence visualization
-    import matplotlib.pyplot as plt
+    plt.figure(figsize=(10,6))
     plt.plot(oja.angle_history)
     plt.xlabel("Epoch")
     plt.ylabel("Angle with PCA (°)")
     plt.title("Oja convergence toward first principal component")
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
     plt.show()
 
     # Check if they are similar (considering sign ambiguity)
@@ -239,9 +243,16 @@ def main():
 
     # Scatter (PCA vs Oja scores)
     plt.figure(figsize=(8, 6))
-    plt.scatter(scores_pca, scores_oja, alpha=0.75)
+
+    # Scatter points: actual PCA vs Oja scores per country
+    plt.scatter(scores_pca, scores_oja, color="royalblue", alpha=0.7, label="Country scores")
+
+    # Red dashed line: perfect 1:1 relationship
     mn, mx = scores_pca.min(), scores_pca.max()
-    plt.plot([mn, mx], [mn, mx], "r--", label="y = x")
+    plt.plot([mn, mx], [mn, mx],
+             "r--", linewidth=2, label="Perfect match (PCA = Oja)")
+    mn, mx = scores_pca.min(), scores_pca.max()
+    #plt.plot([mn, mx], [mn, mx], "r--", label="y = x")
     plt.xlabel("PCA country scores (PC1)")
     plt.ylabel("Oja country scores (PC1)")
     plt.title("Country projections: PCA vs Oja (PC1)")
@@ -264,7 +275,31 @@ def main():
 
     # correlation
     corr = np.corrcoef(scores_pca, scores_oja)[0, 1]
+    var_oja_pca = corr ** 2
     print(f"\nCorrelation between PCA and Oja country projections (PC1): {corr:.4f}")
+    print(f"\nVariance between PCA and Oja country projections (PC1): {var_oja_pca:.4f}")
+    #explained variance
+    print("\n=== Explained Variance Comparison ===")
+    pca_ratio = pca.explained_variance_ratio_[0]
+    oja_ratio = oja.explained_variance_ratio(dst["Data"])
+    print(f"PCA explained variance ratio (PC1): {pca_ratio:.4f}")
+    print(f"Oja explained variance ratio (PC1): {oja_ratio:.4f}")
+    print(f"Difference: {abs(pca_ratio - oja_ratio):.6f}")
+
+    #weight evolution plot:
+    W = np.array(oja.history)  # shape: (epochs, n_features)
+    var_over_time = [np.var(np.dot(dst['Data'], w)) for w in W]
+    total_var = np.var(dst['Data'], axis=0).sum()
+    ratio_over_time = (np.array(var_over_time) / total_var)
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(ratio_over_time, color="royalblue")
+    plt.xlabel("Epoch")
+    plt.ylabel("Explained variance ratio")
+    plt.title("Variance captured by Oja weights over training")
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
     main()  # This calls main() only when file is run directly

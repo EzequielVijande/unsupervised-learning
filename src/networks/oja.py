@@ -65,3 +65,11 @@ class OjaNetwork:
             return self.weights
         return self.weights / norm
 
+    def explained_variance_ratio(self, X):
+        # Projection of data on learned component
+        z = np.dot(X, self.get_weights())
+        # Variance captured along this direction
+        var_captured = np.var(z, ddof=0)
+        # Total variance in all features
+        total_var = np.var(X, axis=0, ddof=0).sum()
+        return var_captured / total_var
